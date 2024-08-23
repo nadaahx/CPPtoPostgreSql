@@ -8,17 +8,63 @@
 using namespace std;
 
 
-// bool extract_id_value(const std::vector<std::string>& columns, int& id) {
-//     for (const auto& str : columns) {
-//         if (str.find("id ") == 0) {  // Check if the string starts with "id "
-//             std::istringstream iss(str.substr(3)); // Extract the part after "id "
-//             if (iss >> id) {  // Try to extract an integer value
-//                 return true;  // Successful extraction
-//             }
-//         }
-//     }
-//     return false;  // No match found or extraction failed
-// }
+// Function to split a string by a delimiter
+std::vector<std::string> split(const std::string& s, char delimiter) {
+    std::vector<std::string> tokens;
+    std::string token;
+    std::istringstream tokenStream(s);
+    while (std::getline(tokenStream, token, delimiter)) {
+        tokens.push_back(token);
+    }
+    return tokens;
+}
+
+// Function to extract the number from a column name as a string
+std::string extract_number(const std::string& column_name) {
+    std::string number_str;
+    // Traverse the string from the end to find the number
+    for (auto it = column_name.rbegin(); it != column_name.rend(); ++it) {
+        if (std::isdigit(*it)) {
+            number_str = *it + number_str;  // prepend digit
+        } else if (!number_str.empty()) {
+            break;  // stop when we have collected the number
+        }
+    }
+    return number_str.empty() ? "" : number_str;
+}
+
+// Function to extract the number from columns
+std::string get_id_from_columns(const std::string& json_data) {
+    // Locate the start and end of the columns array
+    size_t columns_start = json_data.find("\"columns\": [") + 12;  // 12 is the length of "\"columns\": ["
+    if (columns_start == std::string::npos) return "";
+
+    size_t columns_end = json_data.find("]", columns_start);
+    if (columns_end == std::string::npos) return "";
+
+    // Extract the columns substring
+    std::string columns_str = json_data.substr(columns_start, columns_end - columns_start);
+
+    // Remove leading/trailing whitespace and quotes
+    columns_str.erase(remove(columns_str.begin(), columns_str.end(), '\"'), columns_str.end());
+
+    // Split the columns string by commas
+    auto columns = split(columns_str, ',');
+
+    // Find and return the number from the first column containing "id"
+    for (auto& column : columns) {
+        // Trim leading/trailing whitespace from each column
+        column.erase(column.find_last_not_of(" \n\r\t") + 1);
+        column.erase(0, column.find_first_not_of(" \n\r\t"));
+
+        if (column.find("id") != std::string::npos) {
+            return extract_number(column);
+        }
+    }
+
+    return "";  // Return empty string if no number is found
+}
+
 void parseTableSchema(const std::string& schema, std::string& tableName, std::vector<std::string>& columns) {
     std::string::size_type tableNameStart = schema.find("table_name") + 11; // Length of "table_name" + 2 for ": "
     std::string::size_type tableNameEnd = schema.find(","); // Find the end of table_name
@@ -94,9 +140,9 @@ tuple<string, string> parse_column_value(const string& column_value) {
     return make_tuple(column, value);
 }
 // Edited the name to insert
+
+
 // Variadic template function to insert values into a table
-
-
 template<typename... Args>
 void insert(pqxx::work &W, const string &table, Args... args) {
     std::vector<std::string> args_def = { std::forward<Args>(args)... };
@@ -124,44 +170,45 @@ void insert(pqxx::work &W, const string &table, Args... args) {
 }
 
 
+template<typename... T>
+void update(pqxx::work &W, const std::string &table, string id, T&&... ts) {
+    std::vector<std::string> args_def = { std::forward<T>(ts)... };
+
+    vector<string> columns;
+    vector<string> values;
+    for(auto x : args_def){
+        auto [column , value ] = parse_column_value(x);
+        columns.push_back(column);
+        values.push_back(W.quote(value)); 
+
+    }
+    string str="";
+    for( int i=0 ; i < columns.size() ; i++){
+        if(columns[i]=="id"){
+            continue;
+        }
+        str+=columns[i];
+        str+=" = ";
+        str+=values[i];
+        if(i!=columns.size()-1){
+            str+=", ";
+        }
+        
+    }
+
+    std::string query = "UPDATE " + table + " SET " + str + " WHERE id = " + id+ ";";
+    query.erase(std::remove(query.begin(), query.end(), ':'), query.end());
+    cout<<query<<endl;
+
+    W.exec0(query);
+}
 
 
+void delete_record(pqxx::work &W, const string &table, string id) {
+    string query ="DELETE FROM " + table + " WHERE id = " + id+ ";";
+    query.erase(std::remove(query.begin(), query.end(), ':'), query.end());
 
-
-// template<typename T>
-// void update(pqxx::work &W, const string &table, const string &column, int id, const T &new_value) {
-//     W.exec0("UPDATE " + table + " SET " + column + " = " + W.quote(new_value) + " WHERE id = " + W.quote(to_string(id)) + ";");
-    
-//     cout << "Updated in " << table << ": ID " << id << " set " << column << " to " << new_value << endl;
-// }
-
-// template<typename... T>
-// void update(pqxx::work &W, const std::string &table,int id,  T&&... ts) {
-//     std::vector<std::string> args_def = { std::forward<T>(ts)... };
-
-//     vector<string> columns;
-//     vector<string> values;
-//     for(auto x : args_def){
-//         auto [column , value ] = parse_column_value(x);
-//         columns.push_back(column);
-//         values.push_back(W.quote(value)); 
-
-//     }
-//     string str="";
-//     for( int i=0 ; i < columns.size() ; i++){
-//         str+=columns[i];
-//         str+=" = ";
-//         str+=values[i];
-//     }
-    
-
-//     std::string query = "UPDATE " + table + " SET " + str + " WHERE id = " + W.quote(to_string(id)) + ";";
-//     W.exec0(query);
-// }
-
-template<typename T>
-void delete_record(pqxx::work &W, const string &table, int id) {
-    W.exec0("DELETE FROM " + table + " WHERE id = " + W.quote(to_string(id)) + ";");
+    W.exec0(query);
    
     cout << "Deleted from " << table << ": ID " << id << endl;
 }
@@ -180,31 +227,6 @@ void read_all_rows(pqxx::work &W, const string &table) {
 
 int main() {
     try {
-        // pqxx::connection C("dbname=mydatabase user=nada password=catsforever hostaddr=127.0.0.1 port=5432");
-
-        // if (C.is_open()) {
-        //     cout << "Connected to " << C.dbname() << endl;
-        // } else {
-        //     cerr << "Failed to connect to database" << endl;
-        //     return 1;
-
-
-
-        // }
-
-        // // Run database operations
-        // {
-        //     // pqxx::work W(C);
-
-        //     // read_all_rows(W, "anime_girls"); // Print all rows after insert
-
-        //     // update<string>(W, "anime_girls", "name", 1, "Robin");
-        //     // read_all_rows(W, "anime_girls"); // Print all rows after update
-
-        //     // delete_record<string>(W, "anime_girls", 1);
-        //     // W.commit();
-        // }
-
     crow::SimpleApp app;
 
     // Define a route for the root URL
@@ -251,35 +273,6 @@ int main() {
     res.end();
     });
 
-    // app.route_dynamic("/delete")
-    // .methods(crow::HTTPMethod::POST)
-    // ([](const crow::request& req, crow::response& res) {
-    //     std::string data = req.body;
-
-    //     std::string tableName;
-    //     int id;
-    //     // data should be as follow: table_name: "table_name_value", id: 123
-    //     std::istringstream ss(data);
-    //     std::string token;
-    //     while (std::getline(ss, token, ',')) {
-    //         if (token.find("table_name") != std::string::npos) {
-    //             size_t start = token.find(':') + 2; // Skip ": "
-    //             size_t end = token.find_last_not_of('"') + 1;
-    //             tableName = token.substr(start, end - start);
-    //         } else if (token.find("id") != std::string::npos) {
-    //             size_t start = token.find(':') + 2;
-    //             id = std::stoi(token.substr(start));
-    //         }
-    //     }
-
-    //     pqxx::connection C("dbname=mydatabase user=nada password=catsforever hostaddr=127.0.0.1 port=5432");
-    //     pqxx::work W(C);
-    //     delete_record(W, tableName, id);
-    //     W.commit();
-    //     res.write("Record deleted successfully");
-    //     res.end();
-    // });
-
 app.route_dynamic("/read_all")
     .methods(crow::HTTPMethod::GET)
     ([](const crow::request& req, crow::response& res) {
@@ -304,29 +297,43 @@ app.route_dynamic("/read_all")
         res.end();
     });
 
-// app.route_dynamic("/update")
-//     .methods(crow::HTTPMethod::POST)
-//     ([](const crow::request& req, crow::response& res) {
-//     std::string data = req.body;
+app.route_dynamic("/update")
+    .methods(crow::HTTPMethod::POST)
+    ([](const crow::request& req, crow::response& res) {
+    std::string data = req.body;
+    string id = get_id_from_columns(data);
+    std::string tableName;
+    std::vector<std::string> columns;
+    // data should be as follow: table_name: "table_name_value", columns: ["column_name value", "column_name value",....., "column_name value"]}'
+    // be carefull that determenant of the (where) is column called id (static name)
+    parseTableSchema(data, tableName, columns);
 
-//     std::string tableName;
-//     std::vector<std::string> columns;
-//     int id = 0;
-//     extract_id_value(columns , id);
-//     // data should be as follow: table_name: "table_name_value", columns: ["column_name value", "column_name value",....., "column_name value"]}'
-//     parseTableSchema(data, tableName, columns);
+        pqxx::connection C("dbname=mydatabase user=nada password=catsforever hostaddr=127.0.0.1 port=5432");
+        pqxx::work W(C);
+        update(W, tableName , id, columns);
+        W.commit();
+        res.write("Record updated successfully");
+        res.end();
+    });
 
-//         pqxx::connection C("dbname=mydatabase user=nada password=catsforever hostaddr=127.0.0.1 port=5432");
-//         pqxx::work W(C);
-//         update(W, tableName, id , columns);
-//         W.commit();
-//         res.write("Record updated successfully");
-//         res.end();
-//     });
+      app.route_dynamic("/delete")
+        .methods(crow::HTTPMethod::POST)
+        ([](const crow::request& req, crow::response& res) {
+            std::string data = req.body;
+    string id = get_id_from_columns(data);
+    std::string tableName;
+    std::vector<std::string> columns;
+    // data should be as follow: table_name: "table_name_value", columns: ["id value"]}'
+    // be carefull that determenant of the (where) is column called id (static name)
+    parseTableSchema(data, tableName, columns);
 
-
-
-
+            pqxx::connection C("dbname=mydatabase user=nada password=catsforever hostaddr=127.0.0.1 port=5432");
+            pqxx::work W(C);
+            delete_record(W, tableName, id);
+            W.commit();
+            res.write("Record deleted successfully");
+            res.end();
+        });
 
     // Run the server on port 18080
     app.port(18080).multithreaded().run();
