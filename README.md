@@ -75,5 +75,7 @@ Exit from the `postgres` user shell:
  ```
    ./output
    ```
+----------------------------------------
+WHEN TESING WITH CURL BE CAREFUL OF THE STRUCTURE OF THE REQUEST'S BODY
 
 
