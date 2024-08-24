@@ -4,9 +4,46 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include <openssl/rand.h>
+#include <jwt-cpp/jwt.h>
 #include "crow_all.h"
 using namespace std;
 
+
+
+string generate_secure_key(int length) {
+    vector<unsigned char> buffer(length);
+    if (RAND_bytes(buffer.data(), length) != 1) {
+        throw runtime_error("Failed to generate secure key");
+    }
+    return string(buffer.begin(), buffer.end());
+}
+
+const string secure_key = generate_secure_key(32);
+
+std::string create_jwt(const std::string& username) {
+    return jwt::create()
+        .set_issuer("auth_server")
+        .set_subject(username)
+        .set_payload_claim("username", jwt::claim(username))
+        .set_expires_at(std::chrono::system_clock::now() + std::chrono::seconds{ 3600 })
+        .sign(jwt::algorithm::hs256{ secure_key });
+}
+
+// Function to validate JWT
+bool validateJWT(const std::string& token) {
+    try {
+        auto decoded = jwt::decode(token);
+        auto verifier = jwt::verify()
+            .allow_algorithm(jwt::algorithm::hs256{secure_key})
+            .with_issuer("auth_server");
+        verifier.verify(decoded);
+        return true;
+    } catch (const std::exception& e) {
+        std::cerr << "Token validation error: " << e.what() << std::endl;
+        return false;
+    }
+}
 
 // Function to split a string by a delimiter
 std::vector<std::string> split(const std::string& s, char delimiter) {
@@ -120,7 +157,7 @@ void create_table(pqxx::work& work, const std::string& table_name, Columns&&... 
     std::string column_definitions_str = join(column_definitions, ", ");
 
     // Construct the SQL query
-    std::string query = "CREATE TABLE " + table_name + " (" + column_definitions_str + ")";
+    std::string query = "CREATE TABLE IF NOT EXIST " + table_name + " (id SERIAL PRIMARY KEY, " + column_definitions_str + ")";
     query.erase(std::remove(query.begin(), query.end(), ':'), query.end());
     cout<<query<<endl;
     // Execute the query
@@ -225,21 +262,54 @@ void read_all_rows(pqxx::work &W, const string &table) {
     }
 }
 
+
+auto protectedRoute(const crow::request& req) {
+    auto authHeader = req.get_header_value("Authorization");
+    if (authHeader.substr(0, 7) == "Bearer ") {
+        std::string token = authHeader.substr(7);
+        if (validateJWT(token)) {
+            return true; // Token is valid
+        } else {
+            throw crow::response(401, "Invalid token");
+        }
+    } else {
+        throw crow::response(401, "Missing token");
+    }
+}
+
 int main() {
     try {
+
+        //curl -X POST http://localhost:18080/ -H "Content-Type: application/json" -d '{"username":"user", "password":"password"}'
+
+
     crow::SimpleApp app;
 
-    // Define a route for the root URL
-    app.route_dynamic("/")
-    .methods(crow::HTTPMethod::GET)
-    ([](const crow::request& req, crow::response& res) {
-        res.write("Hello, World!");
-        res.end();
-    });
+
+
+app.route_dynamic("/")
+.methods(crow::HTTPMethod::POST)
+([](const crow::request& req){
+    auto x = crow::json::load(req.body);
+    if (!x) return crow::response(400);
+
+    std::string username = x["username"].s();
+    std::string password = x["password"].s();
+    CROW_LOG_INFO << "user received: " << x;
+    CROW_LOG_INFO << "pass received: " << password;
+
+    if (username == "test" && password == "testpass") {
+        std::string token = create_jwt(username);
+        return crow::response(200 , token);
+    } else {
+        return crow::response(401, "Invalid credentials");
+    }
+});
 
     app.route_dynamic("/create_table")
     .methods(crow::HTTPMethod::POST)
     ([](const crow::request& req, crow::response& res) {
+        protectedRoute(req);
         std::string data = req.body;
 
     std::string tableName;
@@ -259,6 +329,7 @@ int main() {
     app.route_dynamic("/insert")
     .methods(crow::HTTPMethod::POST)
     ([](const crow::request& req, crow::response& res) {
+        protectedRoute(req);
         std::string data = req.body;
 
     std::string tableName;
@@ -276,6 +347,7 @@ int main() {
 app.route_dynamic("/read_all")
     .methods(crow::HTTPMethod::GET)
     ([](const crow::request& req, crow::response& res) {
+        protectedRoute(req);
         std::string tableName = req.url_params.get("table");
         if (tableName.empty()) {
             res.write("Table name is required");
@@ -300,6 +372,7 @@ app.route_dynamic("/read_all")
 app.route_dynamic("/update")
     .methods(crow::HTTPMethod::POST)
     ([](const crow::request& req, crow::response& res) {
+        protectedRoute(req);
     std::string data = req.body;
     string id = get_id_from_columns(data);
     std::string tableName;
@@ -319,6 +392,7 @@ app.route_dynamic("/update")
       app.route_dynamic("/delete")
         .methods(crow::HTTPMethod::POST)
         ([](const crow::request& req, crow::response& res) {
+            protectedRoute(req);
             std::string data = req.body;
     string id = get_id_from_columns(data);
     std::string tableName;
