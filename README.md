@@ -14,6 +14,27 @@ Before running the project, ensure you have the following dependencies installed
 sudo apt-get install postgresql libpqxx-dev libasio-dev
  ```
 - **Crow Web Framework**: header is provided in the repo
+- **Install OpenSSL**:
+  ```sh
+  sudo apt-get install libssl-dev
+  ```
+- **Install nlohmann-json**: This JSON library is a dependency for jwt-cpp.
+```sh
+sudo apt-get install nlohmann-json3-dev
+```
+- **Clone the jwt-cpp repository**:
+```sh
+git clone https://github.com/Thalhammer/jwt-cpp.git
+```
+- **Navigate to the jwt-cpp directory**:
+```sh
+cd jwt-cpp
+```
+- **Build the project using CMake or copy the headers directly to your project.**
+- **Update the linker cache:**
+```sh
+sudo ldconfig
+```
 
    ## Creating a User and Database
 
@@ -170,15 +191,27 @@ Deletes a record from the specified table.
 ## Compiling and Running C++ Code
 
 1. Compile the C++ code with `g++`:
-  ```
-   g++ main.cpp -o output -lpqxx -lpq
+  ```sh
+   g++ main.cpp -o output -lpqxx -lpq -lssl -lcrypto
    ```
-
+You may need to specify the path to headers 
+```sh
+g++ main.cpp -o output -I/path/to/headers -lpqxx -lpq -lssl -lcrypto
+```
 
 2. Run the compiled executable:
  ```
    ./output
    ```
+## Testing
+```sh
+curl -X POST http://localhost:18080/ -H "Content-Type: application/json" -d '{"username": "test","password": "testpass" }'
+```
+
+```sh
+curl -X GET "http://localhost:18080/read_all?table=test" -H "Authorization: Bearer -token generated-"
+```
+
 
 
 
