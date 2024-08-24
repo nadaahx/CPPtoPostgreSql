@@ -161,16 +161,7 @@ Deletes a record from the specified table.
 ```json
 {
    "table_name": "your_table_name",
-   "id": "record_id"
-}
-```
-
-**Example:**
-
-```json
-{
-   "table_name": "students",
-   "id": "1"
+   "columns": ["id value"]
 }
 ```
 
