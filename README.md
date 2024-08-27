@@ -99,21 +99,21 @@ Creates a new table with the specified schema.
 
 **Request Body Format:**
 
-```json
-{
-   "table_name": "your_table_name",
-   "columns": ["column1 dataType", "column2 dataType", "columnN dataType"]
-}
-```
+  ```json
+  {
+    "table_name": "string",
+    "columns": ["column_name DATA_TYPE", ...]
+  }
+  ```
 
 **Example:**
 
-```json
-{
-   "table_name": "students",
-   "columns": ["id SERIAL PRIMARY KEY", "name VARCHAR(100)", "age INT"]
-}
-```
+  ```json
+  {
+    "table_name": "users",
+    "columns": ["name TEXT", "email TEXT", "age INTEGER"]
+  }
+  ```
 
 ### /insert (POST)
 
@@ -121,21 +121,28 @@ Inserts a new record into the specified table.
 
 **Request Body Format:**
 
-```json
-{
-   "table_name": "your_table_name",
-   "columns": ["column_name value", "column_name value", ...]
-}
-```
+  ```json
+  {
+    "table_name": "string",
+    "columns": {
+      "column_name": "value",
+      ...
+    }
+  }
+  ```
 
 **Example:**
 
-```json
-{
-   "table_name": "students",
-   "columns": ["name John", "age 20"]
-}
-```
+  ```json
+  {
+    "table_name": "users",
+    "columns": {
+      "name": "John Doe",
+      "email": "john@example.com",
+      "age": "30"
+    }
+  }
+  ```
 
 ### /read_all (GET)
 
@@ -157,21 +164,30 @@ Updates a record in the specified table. The record is identified by the id colu
 
 **Request Body Format:**
 
-```json
-{
-   "table_name": "your_table_name",
-   "columns": ["column_name value", "column_name value", ...]
-}
-```
+  ```json
+  {
+    "table_name": "string",
+    "columns": {
+      "id": "string",
+      "column_name": "new_value",
+      ...
+    }
+  }
+  ```
 
 **Example:**
 
-```json
-{
-   "table_name": "students",
-   "columns": ["id 1", "name Jane", "age 22"]
-}
-```
+  ```json
+  {
+    "table_name": "users",
+    "columns": {
+      "id": "1",
+      "name": "Jane Doe",
+      "email": "jane@example.com",
+      "age": "31"
+    }
+  }
+  ```
 
 ### /delete (POST)
 
@@ -179,12 +195,12 @@ Deletes a record from the specified table.
 
 **Request Body Format:**
 
-```json
-{
-   "table_name": "your_table_name",
-   "columns": ["id value"]
-}
-```
+  ```json
+  {
+    "table_name": "users",
+    "id": "1"
+  }
+  ```
 
 
 
