@@ -12,6 +12,8 @@ Before running the project, ensure you have the following dependencies installed
  ```sh
  sudo apt-get update
 sudo apt-get install postgresql libpqxx-dev libasio-dev
+sudo apt-get inatsll libxlsxwriter-dev
+sudo apt-get install libhpdf-dev
  ```
 - **Crow Web Framework**: header is provided in the repo
 - **Install OpenSSL**:
