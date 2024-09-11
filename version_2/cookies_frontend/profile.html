@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Info Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .form-container {
+            background-color: white;
+            padding: 40px 70px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 300px;
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        input[type="text"], input[type="submit"] {
+            width: 70%;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+        }
+        input[type="submit"] {
+            background-color: #4CAF50;
+            margin-top: 10px;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        input[type="submit"]:hover {
+            background-color: #45a049;
+        }
+                #warning-message {
+            color: red;
+            text-align: center;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container" id="form-container">
+        <h2>Profile Information</h2>
+<form id="user-info-form" action='/insert_profile' method="POST">
+    <label for="user-id">User ID:</label>
+    <input type="text" id="user_id" name="user_id" placeholder="Enter user ID" required>
+
+    <label for="address">Address:</label>
+    <input type="text" id="address" name="address" placeholder="Enter user's Address" required>
+
+    <input type="submit" value="Submit">
+</form>
+
+        <div id="warning-message"></div>
+    </div>
+    <footer id="status"></footer>
+
+<script>
+
+   let tokenCheckInterval;
+
+
+   checkToken();
+            
+    document.getElementById('user-info-form').addEventListener('submit', function(event) {
+        event.preventDefault(); // Prevent the default form submission
+
+        // Get the form data
+        const userId = document.getElementById('user_id').value;
+        const address = document.getElementById('address').value;
+
+        // Validate the input
+        if (!userId || !address) {
+            document.getElementById('warning-message').innerText = "Please fill in all fields.";
+            return;
+        }
+
+        // Create a JSON object
+        const data = {
+            user_id: userId,
+            address: address
+        };
+
+        // Send a POST request to the server
+        fetch('/insert_profile', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.text();
+        })
+        .then(data => {
+            // Display success message
+            document.getElementById('status').innerText = data;
+            document.getElementById('warning-message').innerText = ""; // Clear any previous warnings
+        })
+        .catch(error => {
+            // Display error message
+            document.getElementById('warning-message').innerText = error.message;
+        });
+    });
+    
+    
+    
+        function startTokenCheck() {
+            tokenCheckInterval = setInterval(checkToken, 30000); // 30 seconds
+        }
+        
+        function checkToken() {
+            const loginData = getLoginData();
+            const submitButton = document.querySelector('input[type="submit"]');
+        
+            if (loginData.jwt) {
+                fetch('/check_token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username: loginData.username, token: loginData.jwt })
+                }).then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.status === 'success') {
+                        document.cookie = `jwt=${data.new_token}; Path=/; Max-Age=${60 * 60}`;
+                        document.getElementById('status').textContent = 'Token refreshed';
+                        document.getElementById('warning-message').textContent = '';
+                        submitButton.disabled = false;
+                    } else {
+                        throw new Error('Token check failed');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('warning-message').textContent = 'You are not authenticated. Please log in again.';
+                    submitButton.disabled = true;
+                    clearInterval(tokenCheckInterval);
+                });
+            } else {
+                document.getElementById('warning-message').textContent = 'You are not authenticated. Please log in again.';
+                submitButton.disabled = true;
+            }
+        }
+
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+
+        function getLoginData() {
+    const token = getCookie('jwt');
+    let username = getCookie('username');
+    
+    // Set the default username to 'user1' if the username cookie is undefined
+    if (!username) {
+        username = 'user1';
+    }
+    
+    return {
+        username: username,
+        jwt: token ? token : null
+    };
+}
+
+        startTokenCheck();
+        
+</script>
+
+</body>
+</html>
