@@ -1,0 +1,222 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Our Services</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .navbar {
+            background-color: #333;
+            overflow: hidden;
+        }
+        .navbar ul {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: flex-start;
+        }
+        .navbar ul li {
+            float: left;
+        }
+        .navbar ul li a {
+            display: block;
+            color: white;
+            text-align: center;
+            padding: 14px 20px;
+            text-decoration: none;
+        }
+        .navbar ul li a:hover {
+            background-color: #575757;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .service {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .service h2 {
+            color: #3498db;
+            margin-top: 0;
+        }
+        ul {
+            padding-left: 20px;
+            list-style-type: none;
+        }
+        .subservice {
+            padding: 8px 12px;
+            margin-bottom: 5px;
+            background-color: #e8e8e8;
+            border-radius: 3px;
+            transition: background-color 0.3s ease;
+        }
+        .subservice.disabled {
+            background-color: #cccccc;
+            pointer-events: none;
+        }
+        .subservice:hover {
+            background-color: #d0d0d0;
+        }
+        a {
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        
+        .subservice.disabled {
+            background-color: #cccccc;
+            color: #666666;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <ul>
+            <li><a href="/profile.html">Profile</a></li>
+            <li><a href="/services.html">Services</a></li>
+            <li><a href="login.html">Logout</a></li>
+        </ul>
+    </div>
+    <h1>Our Services</h1>
+
+    <div class="service" id="users-service">
+        <h2>Users</h2>
+    <ul>
+    <li><a href="create-user.html" class="subservice" id="1">1. Create users</a></li>
+    <li><a href="read-user.html" class="subservice" id="2">2. Read user information</a></li>
+    <li><a href="update-user.html" class="subservice" id="3">3. Update user details</a></li>
+    <li><a href="delete-user.html" class="subservice" id="4">4. Delete users</a></li>
+</ul>
+</div>
+
+<div class="service" id="services-service">
+    <h2>Services</h2>
+    <ul>
+        <li><a href="create-service.html" class="subservice" id="5">5. Create services</a></li>
+        <li><a href="update-service.html" class="subservice" id="6">6. Update service details</a></li>
+        <li><a href="delete-service.html" class="subservice" id="7">7. Delete services</a></li>
+    </ul>
+</div>
+
+<div class="service" id="authorities-service">
+    <h2>Authorities</h2>
+    <ul>
+        <li><a href="send-authority-request.html" class="subservice" id="8">8. Send authority request</a></li>
+        <li><a href="read-authority-requests.html" class="subservice" id="9">9. Read authority requests</a></li>
+        <li><a href="add-new-authorities.html" class="subservice" id="10">10. Create authorities</a></li>
+        <li><a href="delete-authorities.html" class="subservice" id="11">11. Delete authorities</a></li>
+    </ul>
+</div>
+
+    </div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+    
+    // Fetch user ID based on username
+
+document.addEventListener('DOMContentLoaded', async function() {
+    const username = getCookie('username'); // Function to get the 'username' cookie
+    const sessionToken = getCookie('session_token');
+
+    if (!username || !sessionToken) {
+            console.error('Username or session token cookie not found.');
+            window.location.href = 'login.html';
+            return;
+        }
+        // Initial fetch of user data and services
+        await fetchUserDataAndServices();
+
+        // Set up periodic cookie check
+        setInterval(checkAndUpdateCookie, 30000); // Check every 30 seconds
+    });
+
+    async function fetchUserDataAndServices() {
+        try {
+            const userId = await getUserId();
+            const servicesData = await fetchServices();
+            updateServiceAccess(userId, servicesData);
+        } catch (error) {
+            console.error('Error fetching data:', error);
+        }
+    }
+
+    async function getUserId() {
+        const username = getCookie('username');
+        const response = await fetch('http://38.242.215.0:18080/get-user-id', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username }),
+        });
+
+        if (!response.ok) throw new Error('Failed to fetch user ID');
+        const data = await response.json();
+        return data.user_id;
+    }
+
+    async function fetchServices() {
+        const response = await fetch('http://38.242.215.0:18080/read_all?table=Authorities');
+        if (!response.ok) throw new Error('Failed to fetch services');
+        return await response.json();
+    }
+
+    function updateServiceAccess(userId, servicesData) {
+        const matchingServiceIds = servicesData
+            .filter(service => service.user_id === userId)
+            .map(service => service.service_id);
+
+        document.querySelectorAll('.subservice').forEach(subservice => {
+            const serviceId = subservice.id;
+            subservice.classList.toggle('disabled', !matchingServiceIds.includes(serviceId));
+        });
+    }
+
+    async function checkAndUpdateCookie() {
+        try {
+            const response = await fetch('/check-and-update-token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: getCookie('username'),
+                    session_token: getCookie('session_token')
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Token validation failed');
+            }
+
+            const data = await response.json();
+            if (data.new_token) {
+                document.cookie = `session_token=${data.new_token}; Path=/`;
+            }
+        } catch (error) {
+            console.error('Session validation failed:', error);
+            window.location.href = 'login.html'; // Redirect to login page
+        }
+    }
+
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+
+
+
+
+
+    </script>
+</body>
+</html>

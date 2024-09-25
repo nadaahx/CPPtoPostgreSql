@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authority Requests</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        #btn-refresh {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            cursor: pointer;
+        }
+        #btn-refresh:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Authority Requests</h1>
+<button id="btn-refresh">Refresh Data</button>
+<table id="resultsTable">
+    <thead>
+        <tr>
+            <!-- Column headers will be dynamically populated -->
+        </tr>
+    </thead>
+    <tbody>
+        <!-- Data rows will be dynamically populated -->
+    </tbody>
+</table>
+
+<script>
+    async function fetchAuthorityRequests() {
+        try {
+            const response = await fetch('http://38.242.215.0:18080/read_all?table=authorities_requests');
+            if (!response.ok) {
+                throw new Error('Network response was not ok ' + response.statusText);
+            }
+            const data = await response.json();
+            populateTable(data);
+        } catch (error) {
+            console.error('There was a problem with the fetch operation:', error);
+        }
+    }
+
+    function populateTable(data) {
+        const tableHead = document.querySelector('#resultsTable thead tr');
+        const tableBody = document.querySelector('#resultsTable tbody');
+
+        // Clear previous contents
+        tableHead.innerHTML = '';
+        tableBody.innerHTML = '';
+
+        // Define the desired column order
+        const columnOrder = ['authority_id', 'user_id', 'service_id', 'authority_level', 'start_date', 'end_date', 'is_request'];
+
+        // Populate headers
+        columnOrder.forEach(key => {
+            const th = document.createElement('th');
+            th.textContent = key;
+            tableHead.appendChild(th);
+        });
+
+        if (data.length > 0) {
+            // Populate rows
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                columnOrder.forEach(key => {
+                    const td = document.createElement('td');
+                    td.textContent = row[key] !== null ? row[key] : 'NULL'; // Handle null values
+                    tr.appendChild(td);
+                });
+                tableBody.appendChild(tr);
+            });
+        } else {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.colSpan = columnOrder.length; // Adjust colspan to match number of columns
+            td.textContent = 'No data available';
+            tr.appendChild(td);
+            tableBody.appendChild(tr);
+        }
+    }
+
+    // Fetch authority requests on page load
+    window.onload = fetchAuthorityRequests;
+    document.getElementById('btn-refresh').addEventListener('click', fetchAuthorityRequests);
+</script>
+
+</body>
+</html>
