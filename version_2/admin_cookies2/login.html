@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h2>Login</h2>
+        <form id="loginForm">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" required>
+
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required>
+
+            <button type="submit">Login</button>
+        </form>
+
+        <div class="additional-options">
+            <a href="forgot-password.html">Forgot Password?</a>
+        </div>
+
+        <p>Don't have an account? <a href="signup.html">Sign Up</a></p>
+        <p>Need help? <a href="contact-support.html">Contact Support</a></p>
+    </div>
+</body>
+
+<!-- jQuery to handle form submission -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+function clearAllCookies() {
+    // Get all cookies as a string
+    const cookies = document.cookie.split(";");
+
+    // Loop through each cookie
+    cookies.forEach(cookie => {
+        // Get the cookie name
+        const cookieName = cookie.split("=")[0].trim();
+
+        // Set the cookie to expire in the past to delete it
+        document.cookie = `${cookieName}=;expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+    });
+}
+
+// Call the function when the page loads
+window.onload = clearAllCookies;
+
+
+    $(document).ready(function() {
+        // Bind form submission event
+        $("#loginForm").submit(function(e) {
+            e.preventDefault(); // Prevent default form submission
+            
+            // Capture form data
+            var formData = {
+                username: $("#username").val(),
+                password: $("#password").val()
+            };
+
+            // AJAX request for login
+            $.ajax({
+                type: "POST",
+                url: "/login", // API endpoint
+                data: JSON.stringify(formData), // Properly format as JSON string
+                contentType: "application/json", // Set content type to JSON
+                success: function(response) {
+                    // On successful login
+                    alert("Login successful!");
+                    window.location.href = "services.html"; // Redirect to a dashboard or another page
+                },
+                error: function(xhr, status, error) {
+                    // On login failure
+                    alert("Error: " + xhr.responseText); // Display error message
+                }
+            });
+        });
+    });
+</script>
+</html>
+

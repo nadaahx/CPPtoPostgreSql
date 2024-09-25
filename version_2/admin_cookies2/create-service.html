@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Service</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .navbar {
+            background-color: #333;
+            overflow: hidden;
+        }
+        .navbar ul {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: flex-start;
+        }
+        .navbar ul li {
+            float: left;
+        }
+        .navbar ul li a {
+            display: block;
+            color: white;
+            text-align: center;
+            padding: 14px 20px;
+            text-decoration: none;
+        }
+        .navbar ul li a:hover {
+            background-color: #575757;
+        }
+        .container {
+            max-width: 600px;
+            margin: 30px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, textarea {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+        }
+        button {
+            padding: 10px;
+            background-color: #27ae60;
+            border: none;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #2ecc71;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <ul>
+            <li><a href="/profile.html">Profile</a></li>
+            <li><a href="/services.html">Services</a></li>
+            <li><a href="login.html">Logout</a></li>
+        </ul>
+    </div>
+    <div class="container">
+        <h1>Create Service</h1>
+        <form id="create-service-form">
+            <label for="service_name">Service Name:</label>
+            <input type="text" id="service_name" name="service_name" required>
+            
+            <label for="description">Service Description:</label>
+            <textarea id="description" name="description" rows="5" required></textarea>
+            
+            <button type="submit">Create Service</button>
+        </form>
+    </div>
+
+    <script>
+                document.addEventListener('DOMContentLoaded', async function() {
+    const username = getCookie('username'); // Function to get the 'username' cookie
+    const sessionToken = getCookie('session_token');
+
+    if (!username || !sessionToken) {
+            console.error('Username or session token cookie not found.');
+            window.location.href = 'login.html';
+            return;
+        }
+        // Set up periodic cookie check
+        setInterval(checkAndUpdateCookie, 30000); // Check every 30 seconds
+    });
+    
+        document.getElementById('create-service-form').addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent default form submission
+
+            const serviceData = {
+                service_name: document.getElementById('service_name').value,
+                description: document.getElementById('description').value
+            };
+
+            fetch('/create-service', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(serviceData)
+            })
+            .then(response => response.text())
+            .then(message => {
+                alert(message); // Show success or error message
+            })
+            .catch(error => console.error('Error:', error));
+        });
+                                   function getCookie(name) {
+    let cookieArr = document.cookie.split(";");
+    for (let i = 0; i < cookieArr.length; i++) {
+        let cookiePair = cookieArr[i].split("=");
+        if (name === cookiePair[0].trim()) {
+            return decodeURIComponent(cookiePair[1]);
+        }
+    }
+    return null;
+}
+
+    async function checkAndUpdateCookie() {
+        try {
+            const response = await fetch('/check-and-update-token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: getCookie('username'),
+                    session_token: getCookie('session_token')
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Token validation failed');
+            }
+
+            const data = await response.json();
+            if (data.new_token) {
+                document.cookie = `session_token=${data.new_token}; Path=/`;
+            }
+        } catch (error) {
+            console.error('Session validation failed:', error);
+            window.location.href = 'login.html'; // Redirect to login page
+        }
+    }
+    </script>
+</body>
+</html>

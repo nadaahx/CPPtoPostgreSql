@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile</title>
+    <style>
+        /* Same styling as before */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .navbar {
+            background-color: #333;
+            overflow: hidden;
+        }
+
+        .navbar ul {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: flex-start;
+        }
+
+        .navbar ul li {
+            float: left;
+        }
+
+        .navbar ul li a {
+            display: block;
+            color: white;
+            text-align: center;
+            padding: 14px 20px;
+            text-decoration: none;
+        }
+
+        .navbar ul li a:hover {
+            background-color: #575757;
+        }
+
+        .container {
+            width: 50%;
+            margin: 50px auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+
+        input[type="text"], input[type="password"], textarea {
+            width: 100%;
+            padding: 10px;
+            font-size: 1em;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+
+        textarea {
+            resize: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.1em;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .toggle-checkbox {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <ul>
+            <li><a href="/profile.html">Profile</a></li>
+            <li><a href="/services.html">Services</a></li>
+            <li><a href="login.html">Logout</a></li>
+        </ul>
+    </div>
+    <div class="container">
+        <h2>Profile</h2>
+        <form id="profileForm">
+            <!-- Username -->
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required readonly>
+            </div>
+
+            <!-- Password -->
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required>
+                <div class="toggle-checkbox">
+                    <input type="checkbox" id="togglePassword" onclick="togglePasswordVisibility()">
+                    <label for="togglePassword" style="font-size: small;">Show Password</label>
+                </div>
+            </div>
+
+            <!-- Phone Number -->
+            <div class="form-group">
+                <label for="phone">Phone Number</label>
+                <input type="text" id="phone" name="phone" required>
+            </div>
+
+            <!-- Address -->
+            <div class="form-group">
+                <label for="address">Address</label>
+                <textarea id="address" name="address" rows="3" required></textarea>
+            </div>
+
+            <!-- Save Button -->
+            <button type="submit">Save</button>
+        </form>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const username = getCookie('username'); // Function to get the 'username' cookie
+    const sessionToken = getCookie('session_token');
+
+    if (!username || !sessionToken) {
+            console.error('Username or session token cookie not found.');
+            window.location.href = 'login.html';
+            return;
+        }
+
+        // Set up periodic cookie check
+    setInterval(checkAndUpdateCookie, 30000);
+        
+    if (username) {
+        fetch(`/user-profile/${encodeURIComponent(username)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.username) {
+                    // Populate the form with user info
+                    document.getElementById('username').value = data.username;
+                    document.getElementById('phone').value = data.phone_number;
+                    document.getElementById('address').value = data.address;
+                } else {
+                    console.log('User not found');
+                }
+            })
+            .catch(error => console.error('Error:', error));
+    } else {
+        console.error('Username cookie not found');
+    }
+});
+
+// Helper function to get a cookie value by name
+function getCookie(name) {
+    let cookieArr = document.cookie.split(";");
+    for (let i = 0; i < cookieArr.length; i++) {
+        let cookiePair = cookieArr[i].split("=");
+        if (name === cookiePair[0].trim()) {
+            return decodeURIComponent(cookiePair[1]);
+        }
+    }
+    return null;
+}
+
+document.getElementById('profileForm').addEventListener('submit', function(event) {
+    event.preventDefault(); // Prevent default form submission
+
+    const formData = {
+        username: document.getElementById('username').value,
+        password: document.getElementById('password').value,
+        phone: document.getElementById('phone').value,
+        address: document.getElementById('address').value
+    };
+
+    fetch('/update-profile', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.text())
+    .then(message => {
+        alert(message); // Show success or error message
+    })
+    .catch(error => console.error('Error:', error));
+});
+
+
+async function checkAndUpdateCookie() {
+        try {
+            const response = await fetch('/check-and-update-token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: getCookie('username'),
+                    session_token: getCookie('session_token')
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Token validation failed');
+            }
+
+            const data = await response.json();
+            if (data.new_token) {
+                document.cookie = `session_token=${data.new_token}; Path=/`;
+            }
+        } catch (error) {
+            console.error('Session validation failed:', error);
+            window.location.href = 'login.html'; // Redirect to login page
+        }
+}
+    
+// Toggle password visibility
+function togglePasswordVisibility() {
+    const passwordInput = document.getElementById("password");
+    const toggleCheckbox = document.getElementById("togglePassword");
+    passwordInput.type = toggleCheckbox.checked ? "text" : "password";
+}
+</script>
+
+</body>
+</html>
